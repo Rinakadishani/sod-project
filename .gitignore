@@ -1,0 +1,13 @@
+# Ignore virtual environment
+.venv/
+
+# Ignore macOS files
+.DS_Store
+
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore DUTS dataset 
+data/DUTS/images/
+data/DUTS/masks/
