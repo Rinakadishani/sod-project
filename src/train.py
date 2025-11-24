@@ -73,7 +73,7 @@ def main():
         if val_loss < best_val:
             best_val = val_loss
             patience_count = 0
-            torch.save(model.state_dict(), "best_model.pth")
+            torch.save(model.state_dict(), "final_model.pth")
             print("Saved best model!")
         else:
             patience_count += 1
