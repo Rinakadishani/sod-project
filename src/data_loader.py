@@ -38,23 +38,31 @@ class DUTSDataset(Dataset):
 
         return img, mask
 
-    def __getitem__(self, idx):
-        img, mask = self._load_pair(idx)
+from torchvision import transforms
+import torchvision.transforms.functional as TF
 
+class DUTSDataset(Dataset):
+    def __init__(self, image_paths, mask_paths, image_size=128, augment=False):
+        self.image_paths = image_paths
+        self.mask_paths = mask_paths
+        self.image_size = image_size
+        self.augment = augment
+
+        self.aug_transform = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(15),
+            transforms.ColorJitter(brightness=0.3, contrast=0.3),
+            transforms.GaussianBlur(kernel_size=3),
+        ])
+
+    def _augment(self, img, mask):
+        seed = np.random.randint(99999)
         
-        img = img.resize((self.image_size, self.image_size), Image.BILINEAR)
-        mask = mask.resize((self.image_size, self.image_size), Image.NEAREST)
+        torch.manual_seed(seed)
+        img = self.aug_transform(img)
 
-        
-        if self.augment:
-            img, mask = self._augment(img, mask)
-
-        
-        img = TF.to_tensor(img)            
-        mask = TF.to_tensor(mask)         
-
-       
-        mask = (mask > 0.5).float()
+        torch.manual_seed(seed)
+        mask = self.aug_transform(mask)
 
         return img, mask
 
