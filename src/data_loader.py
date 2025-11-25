@@ -1,6 +1,4 @@
 import os
-from typing import List, Tuple
-
 import numpy as np
 from PIL import Image
 from sklearn.model_selection import train_test_split
@@ -22,47 +20,36 @@ class DUTSDataset(Dataset):
 
     def _load_pair(self, idx):
         img = Image.open(self.image_paths[idx]).convert("RGB")
-        mask = Image.open(self.mask_paths[idx]).convert("L")   
+        mask = Image.open(self.mask_paths[idx]).convert("L")
         return img, mask
 
     def _augment(self, img, mask):
-        
         if np.random.rand() < 0.5:
             img = TF.hflip(img)
             mask = TF.hflip(mask)
 
-        
-        if np.random.rand() < 0.5:
-            factor = np.random.uniform(0.7, 1.3)
-            img = TF.adjust_brightness(img, factor)
+        angle = np.random.uniform(-15, 15)
+        img = TF.rotate(img, angle)
+        mask = TF.rotate(mask, angle)
+
+        img = TF.adjust_brightness(img, np.random.uniform(0.8, 1.2))
+        img = TF.adjust_contrast(img, np.random.uniform(0.8, 1.2))
 
         return img, mask
 
-from torchvision import transforms
-import torchvision.transforms.functional as TF
+    def __getitem__(self, idx):
+        img, mask = self._load_pair(idx)
 
-class DUTSDataset(Dataset):
-    def __init__(self, image_paths, mask_paths, image_size=128, augment=False):
-        self.image_paths = image_paths
-        self.mask_paths = mask_paths
-        self.image_size = image_size
-        self.augment = augment
+        img = img.resize((self.image_size, self.image_size), Image.BILINEAR)
+        mask = mask.resize((self.image_size, self.image_size), Image.NEAREST)
 
-        self.aug_transform = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
-            transforms.ColorJitter(brightness=0.3, contrast=0.3),
-            transforms.GaussianBlur(kernel_size=3),
-        ])
+        if self.augment:
+            img, mask = self._augment(img, mask)
 
-    def _augment(self, img, mask):
-        seed = np.random.randint(99999)
-        
-        torch.manual_seed(seed)
-        img = self.aug_transform(img)
+        img = TF.to_tensor(img)
+        mask = TF.to_tensor(mask)
 
-        torch.manual_seed(seed)
-        mask = self.aug_transform(mask)
+        mask = (mask > 0.5).float()
 
         return img, mask
 
@@ -81,7 +68,6 @@ def get_image_mask_paths(root_dir):
 
     for fname in image_files:
         base = os.path.splitext(fname)[0]
-        
         for ext in [".png", ".jpg", ".jpeg"]:
             possible = os.path.join(masks_dir, base + ext)
             if os.path.exists(possible):
@@ -94,10 +80,9 @@ def get_image_mask_paths(root_dir):
 
 
 def create_dataloaders(root_dir, batch_size=8, image_size=128, num_workers=0):
-    
+
     image_paths, mask_paths = get_image_mask_paths(root_dir)
 
-    
     train_imgs, temp_imgs, train_msks, temp_msks = train_test_split(
         image_paths, mask_paths, test_size=0.30, random_state=42
     )

@@ -55,11 +55,11 @@ def main():
     model = CNN_SOD().to(DEVICE)
 
     criterion = BCEDiceLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = optim.Adam(model.parameters(), lr=5e-4)
 
-    EPOCHS = 20
+    EPOCHS = 30
     best_val = float("inf")
-    patience = 3
+    patience = 5
     patience_count = 0
 
     for epoch in range(1, EPOCHS + 1):
@@ -74,7 +74,7 @@ def main():
             best_val = val_loss
             patience_count = 0
             torch.save(model.state_dict(), "final_model.pth")
-            print("Saved best model!")
+            print("Saved best model")
         else:
             patience_count += 1
             if patience_count >= patience:
