@@ -16,11 +16,27 @@ def dice_score(pred, target, eps=1e-6):
     total = pred_bin.sum() + target.sum()
     return (2 * inter + eps) / (total + eps)
 
+def precision_score(pred, target, eps=1e-6):
+    pred_bin = (pred > 0.5).float()
+    TP = (pred_bin * target).sum()
+    FP = (pred_bin * (1 - target)).sum()
+    return (TP + eps) / (TP + FP + eps)
+
+def recall_score(pred, target, eps=1e-6):
+    pred_bin = (pred > 0.5).float()
+    TP = (pred_bin * target).sum()
+    FN = ((1 - pred_bin) * target).sum()
+    return (TP + eps) / (TP + FN + eps)
+
+def f1_score(pred, target, eps=1e-6):
+    P = precision_score(pred, target, eps)
+    R = recall_score(pred, target, eps)
+    return (2 * P * R) / (P + R + eps)
 
 def evaluate_model(model, test_loader):
     model.eval()
-    ious = []
-    dices = []
+    ious, dices = [], []
+    precisions, recalls, f1scores = [], [], []
 
     with torch.no_grad():
         for imgs, masks in test_loader:
@@ -31,8 +47,17 @@ def evaluate_model(model, test_loader):
 
             ious.append(iou_score(preds, masks).item())
             dices.append(dice_score(preds, masks).item())
+            precisions.append(precision_score(preds, masks).item())
+            recalls.append(recall_score(preds, masks).item())
+            f1scores.append(f1_score(preds, masks).item())
 
-    return sum(ious) / len(ious), sum(dices) / len(dices)
+    return (
+        sum(ious) / len(ious),
+        sum(dices) / len(dices),
+        sum(precisions) / len(precisions),
+        sum(recalls) / len(recalls),
+        sum(f1scores) / len(f1scores),
+    )
 
 
 def save_visuals(model, test_loader, out_dir="outputs/visuals"):
@@ -78,10 +103,14 @@ def main():
     model = CNN_SOD().to(DEVICE)
     model.load_state_dict(torch.load("final_model.pth", map_location=DEVICE))
 
-    iou, dice = evaluate_model(model, test_loader)
+    iou, dice, precision, recall, f1 = evaluate_model(model, test_loader)
 
-    print(f"\nFinal Test IoU:  {iou:.4f}")
-    print(f"Final Test Dice: {dice:.4f}")
+    print("\nFinal Evaluation Results:")
+    print(f"IoU:       {iou:.4f}")
+    print(f"Precision: {precision:.4f}")
+    print(f"Recall:    {recall:.4f}")
+    print(f"F1-Score:  {f1:.4f}")
+
 
     save_visuals(model, test_loader)
 
